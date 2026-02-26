@@ -34,11 +34,11 @@ func (l *logger) Info(msg string, fields ...zap.Field) {
 	l.logger.Info(msg, fields...)
 }
 func (l *logger) Warn(msg string, fields ...zap.Field) {
-	l.logger.Info(msg, fields...)
+	l.logger.Warn(msg, fields...)
 }
 func (l *logger) Error(msg string, fields ...zap.Field) {
-	l.logger.Info(msg, fields...)
+	l.logger.Error(msg, fields...)
 }
 func (l *logger) Fatal(msg string, fields ...zap.Field) {
-	l.logger.Info(msg, fields...)
+	l.logger.Fatal(msg, fields...)
 }
