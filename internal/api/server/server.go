@@ -43,9 +43,12 @@ func (s *server) Run(config config.Config) error {
 func (s *server) setupRoutes() {
 	api := s.router.Group("/api/v1")
 	{
+		wallet := api.Group("/wallet")
+		{
+			wallet.POST("/", s.controllers.Wallet.ProcessOperation)
+		}
 		wallets := api.Group("/wallets")
 		{
-			wallets.POST("/:walletId/operation", s.controllers.Wallet.ProcessOperation)
 			wallets.GET("/:walletId", s.controllers.Wallet.GetBalance)
 		}
 	}

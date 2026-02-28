@@ -10,3 +10,8 @@ test_race_api:
 	go test -race ./internal/api/... -v
 test_race_locker:
 	go test ./internal/service/wallet/... -run TestWalletLocker -race -v
+compose_up:
+	docker-compose up --build
+compose_down:
+	docker-compose down
+

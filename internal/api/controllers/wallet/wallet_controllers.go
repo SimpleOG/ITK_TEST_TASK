@@ -29,24 +29,19 @@ func New(service walletService.WalletService, log logger.Logger) WalletControlle
 }
 
 type operationRequest struct {
-	OperationType string  `json:"operationType" binding:"required"`
-	Amount        float64 `json:"amount"        binding:"required,gt=0"`
+	ValletId      uuid.UUID `json:"valletId"`
+	OperationType string    `json:"operationType" binding:"required"`
+	Amount        float64   `json:"amount"        binding:"required,gt=0"`
 }
 
 func (wc *walletController) ProcessOperation(c *gin.Context) {
-	walletID, err := uuid.Parse(c.Param("walletId"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid wallet id"})
-		return
-	}
-
 	var req operationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	result, err := wc.service.ProcessOperation(c.Request.Context(), walletID, req.OperationType, req.Amount)
+	result, err := wc.service.ProcessOperation(c.Request.Context(), req.ValletId, req.OperationType, req.Amount)
 	if err != nil {
 		switch {
 		case errors.Is(err, walletService.ErrWalletNotFound):
