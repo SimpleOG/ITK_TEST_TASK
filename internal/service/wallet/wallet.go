@@ -3,6 +3,7 @@ package wallet
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -24,13 +25,24 @@ type WalletService interface {
 type walletService struct {
 	repo   repository.Repository
 	logger logger.Logger
+	locker *walletLocker
 }
 
 func New(repo repository.Repository, log logger.Logger) WalletService {
-	return &walletService{repo: repo, logger: log}
+	return &walletService{
+		repo:   repo,
+		logger: log,
+		locker: newWalletLocker(),
+	}
 }
 
 func (s *walletService) ProcessOperation(ctx context.Context, walletID uuid.UUID, opType string, amount float64) (repository.Wallet, error) {
+	unlock := s.locker.Lock(walletID)
+	defer unlock()
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	var result repository.Wallet
 
 	err := s.repo.WithTx(ctx, func(q repository.Querier) error {
