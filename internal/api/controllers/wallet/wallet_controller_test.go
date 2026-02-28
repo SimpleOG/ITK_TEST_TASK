@@ -41,12 +41,16 @@ func (m *MockWalletService) GetBalance(ctx context.Context, walletID uuid.UUID) 
 	args := m.Called(ctx, walletID)
 	return args.Get(0).(repository.Wallet), args.Error(1)
 }
-
+func (m *MockWalletService) CreateWallet(ctx context.Context) (repository.Wallet, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(repository.Wallet), args.Error(1)
+}
 func setupRouter(svc walletSvc.WalletService) *gin.Engine {
 	r := gin.New()
 	ctrl := wallet.New(svc, zap.NewNop())
 	r.POST("/wallet/", ctrl.ProcessOperation)
 	r.GET("/wallets/:walletId", ctrl.GetBalance)
+	r.POST("/wallets", ctrl.CreateWallet)
 	return r
 }
 
@@ -274,6 +278,37 @@ func TestGetBalance_ServiceError(t *testing.T) {
 		Return(repository.Wallet{}, errors.New("db error"))
 
 	req := httptest.NewRequest(http.MethodGet, "/wallets/"+walletID.String(), nil)
+	rec := httptest.NewRecorder()
+
+	setupRouter(mockSvc).ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusInternalServerError, rec.Code)
+	resp := decodeBody(t, rec)
+	assert.Equal(t, "internal server error", resp["error"])
+	mockSvc.AssertExpectations(t)
+}
+func TestCreateWallet_Success(t *testing.T) {
+	w := makeWallet(0)
+	mockSvc := new(MockWalletService)
+	mockSvc.On("CreateWallet", mock.Anything).Return(w, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/wallets", nil)
+	rec := httptest.NewRecorder()
+
+	setupRouter(mockSvc).ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusCreated, rec.Code)
+	resp := decodeBody(t, rec)
+	assert.Equal(t, w.ID.String(), resp["id"])
+	assert.InDelta(t, 0.0, resp["balance"], 0.001)
+	mockSvc.AssertExpectations(t)
+}
+
+func TestCreateWallet_ServiceError(t *testing.T) {
+	mockSvc := new(MockWalletService)
+	mockSvc.On("CreateWallet", mock.Anything).Return(repository.Wallet{}, errors.New("db error"))
+
+	req := httptest.NewRequest(http.MethodPost, "/wallets", nil)
 	rec := httptest.NewRecorder()
 
 	setupRouter(mockSvc).ServeHTTP(rec, req)

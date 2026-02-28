@@ -3,6 +3,7 @@ package wallet
 import (
 	"errors"
 	"net/http"
+	"tryingMicro/OrderAccepter/internal/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ import (
 type WalletController interface {
 	ProcessOperation(c *gin.Context)
 	GetBalance(c *gin.Context)
+	CreateWallet(ctx *gin.Context)
 }
 
 type walletController struct {
@@ -78,4 +80,23 @@ func (wc *walletController) GetBalance(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+func (c *walletController) CreateWallet(ctx *gin.Context) {
+	w, err := c.service.CreateWallet(ctx.Request.Context())
+	if err != nil {
+		c.log.Error("CreateWallet failed", zap.Error(err))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, walletResponse(w))
+}
+
+func walletResponse(w repository.Wallet) gin.H {
+	return gin.H{
+		"id":         w.ID,
+		"balance":    w.Balance,
+		"created_at": w.CreatedAt,
+		"updated_at": w.UpdatedAt,
+	}
 }

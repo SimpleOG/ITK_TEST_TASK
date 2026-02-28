@@ -20,6 +20,7 @@ const (
 type WalletService interface {
 	ProcessOperation(ctx context.Context, walletID uuid.UUID, opType string, amount float64) (repository.Wallet, error)
 	GetBalance(ctx context.Context, walletID uuid.UUID) (repository.Wallet, error)
+	CreateWallet(ctx context.Context) (repository.Wallet, error)
 }
 
 type walletService struct {
@@ -97,5 +98,15 @@ func (s *walletService) GetBalance(ctx context.Context, walletID uuid.UUID) (rep
 		s.logger.Error("failed to get wallet", zap.String("walletId", walletID.String()), zap.Error(err))
 		return repository.Wallet{}, err
 	}
+	return w, nil
+}
+func (s *walletService) CreateWallet(ctx context.Context) (repository.Wallet, error) {
+	id := uuid.New()
+	w, err := s.repo.CreateWallet(ctx, id)
+	if err != nil {
+		s.logger.Error("failed to create wallet", zap.String("walletId", id.String()), zap.Error(err))
+		return repository.Wallet{}, err
+	}
+	s.logger.Info("wallet created", zap.String("walletId", id.String()))
 	return w, nil
 }

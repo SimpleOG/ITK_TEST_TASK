@@ -236,3 +236,32 @@ func TestGetBalance_RepoError(t *testing.T) {
 	require.ErrorIs(t, err, repoErr)
 	mockRepo.AssertExpectations(t)
 }
+func TestCreateWallet_Success(t *testing.T) {
+	expected := makeWallet(0)
+
+	mockRepo := new(MockRepository)
+	mockRepo.On("CreateWallet", mock.Anything, mock.AnythingOfType("uuid.UUID")).
+		Return(expected, nil)
+
+	svc := wallet.New(mockRepo, zap.NewNop())
+	result, err := svc.CreateWallet(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, expected.ID, result.ID)
+	assert.Equal(t, 0.0, result.Balance)
+	mockRepo.AssertExpectations(t)
+}
+
+func TestCreateWallet_RepoError(t *testing.T) {
+	repoErr := errors.New("db error")
+
+	mockRepo := new(MockRepository)
+	mockRepo.On("CreateWallet", mock.Anything, mock.AnythingOfType("uuid.UUID")).
+		Return(repository.Wallet{}, repoErr)
+
+	svc := wallet.New(mockRepo, zap.NewNop())
+	_, err := svc.CreateWallet(context.Background())
+
+	require.ErrorIs(t, err, repoErr)
+	mockRepo.AssertExpectations(t)
+}

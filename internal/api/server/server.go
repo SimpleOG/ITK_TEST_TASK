@@ -50,6 +50,7 @@ func (s *server) setupRoutes() {
 		wallets := api.Group("/wallets")
 		{
 			wallets.GET("/:walletId", s.controllers.Wallet.GetBalance)
+			wallets.POST("/", s.controllers.Wallet.CreateWallet)
 		}
 	}
 }
