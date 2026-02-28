@@ -29,7 +29,7 @@ func New(service walletService.WalletService, log logger.Logger) WalletControlle
 }
 
 type operationRequest struct {
-	ValletId      uuid.UUID `json:"valletId"`
+	ValletId      uuid.UUID `json:"valletId" binding:"required"`
 	OperationType string    `json:"operationType" binding:"required"`
 	Amount        float64   `json:"amount"        binding:"required,gt=0"`
 }
