@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -44,7 +45,7 @@ func (m *MockWalletService) GetBalance(ctx context.Context, walletID uuid.UUID) 
 func setupRouter(svc walletSvc.WalletService) *gin.Engine {
 	r := gin.New()
 	ctrl := wallet.New(svc, zap.NewNop())
-	r.POST("/wallets/:walletId/operation", ctrl.ProcessOperation)
+	r.POST("/wallet/", ctrl.ProcessOperation)
 	r.GET("/wallets/:walletId", ctrl.GetBalance)
 	return r
 }
@@ -71,8 +72,8 @@ func TestProcessOperation_Deposit_Success(t *testing.T) {
 	mockSvc.On("ProcessOperation", mock.Anything, w.ID, walletSvc.OperationDeposit, 50.0).
 		Return(w, nil)
 
-	body := `{"operationType":"DEPOSIT","amount":50}`
-	req := httptest.NewRequest(http.MethodPost, "/wallets/"+w.ID.String()+"/operation", strings.NewReader(body))
+	body := fmt.Sprintf(`{"valletId":%q,"operationType":"DEPOSIT","amount":50}`, w.ID)
+	req := httptest.NewRequest(http.MethodPost, "/wallet/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -90,8 +91,8 @@ func TestProcessOperation_Withdraw_Success(t *testing.T) {
 	mockSvc.On("ProcessOperation", mock.Anything, w.ID, walletSvc.OperationWithdraw, 30.0).
 		Return(w, nil)
 
-	body := `{"operationType":"WITHDRAW","amount":30}`
-	req := httptest.NewRequest(http.MethodPost, "/wallets/"+w.ID.String()+"/operation", strings.NewReader(body))
+	body := fmt.Sprintf(`{"valletId":%q,"operationType":"WITHDRAW","amount":30}`, w.ID)
+	req := httptest.NewRequest(http.MethodPost, "/wallet/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -103,11 +104,11 @@ func TestProcessOperation_Withdraw_Success(t *testing.T) {
 	mockSvc.AssertExpectations(t)
 }
 
-func TestProcessOperation_InvalidWalletID(t *testing.T) {
+func TestProcessOperation_InvalidBody_BadUUID(t *testing.T) {
 	mockSvc := new(MockWalletService)
 
-	body := `{"operationType":"DEPOSIT","amount":50}`
-	req := httptest.NewRequest(http.MethodPost, "/wallets/not-a-uuid/operation", strings.NewReader(body))
+	body := `{"valletId":"not-a-uuid","operationType":"DEPOSIT","amount":50}`
+	req := httptest.NewRequest(http.MethodPost, "/wallet/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -120,7 +121,7 @@ func TestProcessOperation_InvalidWalletID(t *testing.T) {
 func TestProcessOperation_InvalidBody_MissingFields(t *testing.T) {
 	mockSvc := new(MockWalletService)
 
-	req := httptest.NewRequest(http.MethodPost, "/wallets/"+uuid.New().String()+"/operation", strings.NewReader(`{}`))
+	req := httptest.NewRequest(http.MethodPost, "/wallet/", strings.NewReader(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -133,8 +134,8 @@ func TestProcessOperation_InvalidBody_MissingFields(t *testing.T) {
 func TestProcessOperation_InvalidBody_NegativeAmount(t *testing.T) {
 	mockSvc := new(MockWalletService)
 
-	body := `{"operationType":"DEPOSIT","amount":-10}`
-	req := httptest.NewRequest(http.MethodPost, "/wallets/"+uuid.New().String()+"/operation", strings.NewReader(body))
+	body := fmt.Sprintf(`{"valletId":%q,"operationType":"DEPOSIT","amount":-10}`, uuid.New())
+	req := httptest.NewRequest(http.MethodPost, "/wallet/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -150,8 +151,8 @@ func TestProcessOperation_WalletNotFound(t *testing.T) {
 	mockSvc.On("ProcessOperation", mock.Anything, walletID, walletSvc.OperationDeposit, 50.0).
 		Return(repository.Wallet{}, walletSvc.ErrWalletNotFound)
 
-	body := `{"operationType":"DEPOSIT","amount":50}`
-	req := httptest.NewRequest(http.MethodPost, "/wallets/"+walletID.String()+"/operation", strings.NewReader(body))
+	body := fmt.Sprintf(`{"valletId":%q,"operationType":"DEPOSIT","amount":50}`, walletID)
+	req := httptest.NewRequest(http.MethodPost, "/wallet/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -169,8 +170,8 @@ func TestProcessOperation_InsufficientFunds(t *testing.T) {
 	mockSvc.On("ProcessOperation", mock.Anything, walletID, walletSvc.OperationWithdraw, 100.0).
 		Return(repository.Wallet{}, walletSvc.ErrInsufficientFunds)
 
-	body := `{"operationType":"WITHDRAW","amount":100}`
-	req := httptest.NewRequest(http.MethodPost, "/wallets/"+walletID.String()+"/operation", strings.NewReader(body))
+	body := fmt.Sprintf(`{"valletId":%q,"operationType":"WITHDRAW","amount":100}`, walletID)
+	req := httptest.NewRequest(http.MethodPost, "/wallet/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -188,8 +189,8 @@ func TestProcessOperation_InvalidOperation(t *testing.T) {
 	mockSvc.On("ProcessOperation", mock.Anything, walletID, "REFUND", 50.0).
 		Return(repository.Wallet{}, walletSvc.ErrInvalidOperation)
 
-	body := `{"operationType":"REFUND","amount":50}`
-	req := httptest.NewRequest(http.MethodPost, "/wallets/"+walletID.String()+"/operation", strings.NewReader(body))
+	body := fmt.Sprintf(`{"valletId":%q,"operationType":"REFUND","amount":50}`, walletID)
+	req := httptest.NewRequest(http.MethodPost, "/wallet/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -207,8 +208,8 @@ func TestProcessOperation_ServiceError(t *testing.T) {
 	mockSvc.On("ProcessOperation", mock.Anything, walletID, walletSvc.OperationDeposit, 50.0).
 		Return(repository.Wallet{}, errors.New("db error"))
 
-	body := `{"operationType":"DEPOSIT","amount":50}`
-	req := httptest.NewRequest(http.MethodPost, "/wallets/"+walletID.String()+"/operation", strings.NewReader(body))
+	body := fmt.Sprintf(`{"valletId":%q,"operationType":"DEPOSIT","amount":50}`, walletID)
+	req := httptest.NewRequest(http.MethodPost, "/wallet/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
